@@ -6,3 +6,5 @@ format of international cricket. The dataset contains the data of 106 players fr
 and from nine test cricket playing countries. The dataset includes information such as the country names,
 matches played, total innings, total runs, averages etc.
 
+## R-Programming
+This project is carried out using R-Programming in RStudio
