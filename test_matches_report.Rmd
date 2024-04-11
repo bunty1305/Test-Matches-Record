@@ -1,0 +1,274 @@
+---
+title: "Test Matches Record"
+author: "Bunty Patil"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+### Dataset Summary
+The test matches record dataset is offering insights into the performance of teams and players in the longest format of international cricket. The dataset contains the data of 106 players from year 1908 to year 2024 and from nine test cricket playing countries. The dataset includes information such as the country names, matches played, total innings, total runs, averages etc.
+
+### Installing and loading packages
+To start with our report we need to install some of the packages as follows:
+
+```{r Installing packages, echo=TRUE}
+install.packages("tidyverse", repos = "http://cran.us.r-project.org");
+install.packages("janitor", repos = "http://cran.us.r-project.org")
+
+```
+
+Then load the packages:
+
+```{r Loading packages}
+library(tidyverse)
+library(janitor)
+```
+
+
+### Data Collection
+The collection of raw data is the first step of the data analysis. The raw test matches record dataset is downloaded in csv format from the platform named **Kaggle** and stored in local drive.
+
+To import the csv file, we use read_csv function
+
+```{r Importing csv file}
+test_matches <- read_csv("test_matches_records.csv")
+```
+
+### Data cleaning
+Data cleaning is the process of fixing or removing incorrect, corrupted, incorrectly formatted, duplicate, or incomplete data within a dataset. 
+
+First lets get all columns name of our data
+
+```{r Column names}
+colnames(test_matches)
+```
+
+As our output shows, first column is not valid and other columns are not properly named.
+To rename our column we use rename function as follows
+
+```{r Renaming sr no column}
+test_matches_records <- rename(test_matches, "sr_no" = "...1")
+```
+
+Now to name our all columns properly, we use clean_names() function
+
+```{r Cleaning columns name}
+test_matches_records <- clean_names(test_matches_records)
+```
+
+Now, lets check our values in all columns
+
+```{r Glimpse of dataset}
+glimpse(test_matches_records)
+```
+
+As we can see from the output that our sr no is starting from 0 instead of 1. To fix this
+
+```{r Fixing values of sr no}
+test_matches_records$sr_no <- test_matches_records$sr_no + 1
+```
+
+Also, there are special characters like '*' and '+' in matches, balls_faced, fours and sixes column. To remove it
+
+```{r Removing special characters}
+testmatches <- test_matches_records %>% 
+  mutate(
+    matches = as.numeric(str_remove(matches, "[*+]")),
+    fours = as.numeric(str_remove(fours, "[*+]")),
+    sixes = as.numeric(str_remove(sixes, "[*+]")),
+    balls_faced = as.numeric(str_remove(balls_faced, "[*+]"))
+    )
+```
+
+Lets check the result
+
+```{r Checking result}
+head(testmatches)
+```
+
+Now lets check the duplicates in our data
+
+```{r Finding duplicates}
+get_dupes(testmatches)
+```
+
+There are no duplicates in our data.
+
+### Data organization
+Data organization is a process of organizing raw data, by classifying them into different categories.
+
+Now we want to seperate years from span column into 'from' and 'to' column for our easy analysis
+
+```{r Organising column}
+test_matches_clean <- separate(testmatches, col = span, 
+                               into = c("from", "to"), sep = "-")
+```
+
+Changing data type of 'from' and 'to' columns to numeric data type  
+```{r Changing data type}
+test_matches_clean$to <- as.numeric(as.character(test_matches_clean$to))
+test_matches_clean$from <- as.numeric(as.character(test_matches_clean$from))
+```
+
+```{r Clean Column names}
+colnames(test_matches_clean)
+```
+
+### Data Analysis
+Lets start with our calculation and finding answers to our questions.
+
+**Which are the test matches playing countries**
+```{r Finding test playing country}
+test_matches_clean %>% 
+  distinct(country)
+```
+
+There are total 9 test cricket playing countries.
+
+**Total Matches played by each country**
+```{r Matches played by country}
+matches_played_by_country <- test_matches_clean %>% 
+  group_by(country) %>% 
+  summarise(total_matches = sum(matches)) %>% 
+  arrange(desc(total_matches)) 
+print(matches_played_by_country)
+```
+
+Visualization:
+
+```{r Matches Pie chart, echo=TRUE, warning=FALSE}
+matches_pie_chart <- matches_played_by_country %>% 
+  ggplot(aes(x = '', y = reorder(total_matches, country ) , 
+             fill = factor(reorder(country, total_matches)) )) +
+  geom_bar(stat = "identity", width = 1, color = 'white') +
+  geom_text(aes(x = 1.4,label = total_matches), 
+            position =  position_stack(vjust= 0.5), color = 'black') +
+  theme_void() +
+  theme_classic() +
+  theme(legend.position = "right") +
+  coord_polar("y", start = 0)  +
+  theme(plot.title = element_text(hjust = 0.5, size = 20)) +
+  theme(plot.subtitle = element_text(hjust = 0.5, size = 12)) +
+  theme(axis.line = element_blank()) +
+  theme(axis.text = element_blank()) +
+  theme(axis.ticks = element_blank()) +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  labs(x = NULL, y = NULL,
+       title = 'Pie chart of Test Matches Record', 
+       subtitle = 'Total matches played by Country') +
+  scale_fill_brewer(palette = "Blues", name = "Country") 
+print(matches_pie_chart)
+```
+
+**Total players in each country**
+```{r Players in each Country}
+players_in_country <- test_matches_clean %>%
+  group_by(country) %>% 
+  summarise(players_count = n()) %>% 
+  arrange(desc(players_count))
+print(players_in_country)
+```
+
+Visualization:
+
+```{r Bar chart of Players}
+players_bar_chart <-players_in_country %>% 
+  ggplot(aes(x = reorder(country, desc(players_count)), 
+             y = players_count,
+             fill = factor(reorder(country, players_count)))) + 
+  geom_bar (stat="identity", width = 0.8) +
+  geom_text(aes(label = players_count), 
+            vjust = -0.3, size = 4) +
+  labs(title = "Players in each country",  
+       x= NULL, y="No. of players") +
+  theme_get() +
+  theme(plot.title = element_text(hjust = 0.5, size = 20)) +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  scale_fill_brewer(palette = "Blues", 
+                    name = "Country") 
+print(players_bar_chart)
+```
+
+
+**Top 10 players with max runs and there highest scores**
+```{r Max runs and Highest score, echo=FALSE}
+test_matches_clean %>% 
+  select(names, total_runs, highest_score) %>% 
+  arrange(desc(total_runs)) %>% 
+  head(10) 
+```
+
+**Players from IND having max Average**
+```{r Indian players having max average, echo=FALSE}
+test_matches_clean %>% 
+  select(names, average) %>% 
+  filter(test_matches_clean$country == "IND") %>% 
+  arrange(desc(average))
+```
+
+**Players with max strike rate**
+```{r Players with max strike rate, echo=FALSE}
+test_matches_clean %>% 
+  select(names, strike_rate) %>% 
+  arrange(desc(strike_rate)) %>% 
+  head(10)
+```
+
+**Finding relation between Total Runs and Total Matches**
+```{r Scatterplot of Runs and Matches, warning=FALSE}
+runs_matches <- test_matches_clean %>% 
+  select(matches, total_runs, balls_faced) %>% 
+  ggplot(mapping = aes(x = total_runs, y = matches, 
+                       color = -total_runs)) +
+  geom_smooth(formula = y ~ x, method = "loess", 
+              linetype = 'dashed', color = 'navy') +
+  geom_point(size = 2.5) +
+  labs(title = "Matches vs Total Runs",
+       x = 'Runs', y = 'Matches')+
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, size = 20)) +
+  theme(legend.position = "") 
+print(runs_matches)
+```
+
+**Players from India with max hundreds**
+```{r Players from India with most Hundreds, echo=FALSE}
+test_matches_clean %>% 
+  select(names, hundreds) %>% 
+  filter(test_matches_clean$country == "IND") %>% 
+  arrange(desc(hundreds))
+```
+
+**Player with earliest debut**
+```{r Earliest debuted players, echo=FALSE}
+test_matches_clean %>% 
+  select(names, from) %>% 
+  arrange(from) %>% 
+  head(5)
+```
+
+**Players with long career **
+```{r Played for years, echo=TRUE}
+test_matches_clean %>% 
+  select(names, from, to) %>% 
+  mutate(played_years = test_matches_clean$to - test_matches_clean$from) %>% 
+  arrange(desc(played_years))
+```
+
+We have solved my questions with the dataset and can solve even more. 
+
+
+
+
+
+
+
+
+
+
+
+
+
